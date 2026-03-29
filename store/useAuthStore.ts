@@ -21,8 +21,10 @@ export type AuthUser = {
 type AuthState = {
   ready: boolean;
   user: AuthUser | null;
+  guest: boolean;
   error: string | null;
   loadSession: () => Promise<void>;
+  continueAsGuest: () => Promise<void>;
   signUp: (email: string, password: string, confirmPassword: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -30,6 +32,7 @@ type AuthState = {
 };
 
 const SESSION_KEY = 'session_user_id';
+const SESSION_MODE_KEY = 'session_mode';
 const USERS_KEY = 'users';
 
 // Small helper to generate unique ids for users.
@@ -104,6 +107,7 @@ async function getUserAuthByEmail(email: string): Promise<{
 export const useAuthStore = create<AuthState>((set, get) => ({
   ready: false,
   user: null,
+  guest: false,
   error: null,
 
   // Clears the last error so screens don't show stale messages.
@@ -115,21 +119,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await initDatabase();
       const sessionUserId = await getSessionUserId();
       if (!sessionUserId) {
-        set({ user: null, ready: true });
+        const mode = await dbGet(SESSION_MODE_KEY);
+        set({ user: null, guest: mode === 'guest', ready: true });
         return;
       }
 
       const user = await getUserById(sessionUserId);
       if (!user) {
         await setSessionUserId(null);
-        set({ user: null, ready: true });
+        const mode = await dbGet(SESSION_MODE_KEY);
+        set({ user: null, guest: mode === 'guest', ready: true });
         return;
       }
 
-      set({ user, ready: true });
+      await dbSet(SESSION_MODE_KEY, 'user');
+      set({ user, guest: false, ready: true });
     } catch (e: any) {
-      set({ user: null, ready: true, error: e?.message ?? 'Failed to load session' });
+      set({ user: null, guest: false, ready: true, error: e?.message ?? 'Failed to load session' });
     }
+  },
+
+  // Continue into the app without creating an account (guest mode).
+  continueAsGuest: async () => {
+    await initDatabase();
+    await dbRemove(SESSION_KEY);
+    await dbSet(SESSION_MODE_KEY, 'guest');
+    set({ user: null, guest: true });
   },
 
   // Create a new local account and log the user in.
@@ -162,7 +177,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await saveAllUsers(users);
 
       await setSessionUserId(userId);
-      set({ user: { id: userId, email: normalizedEmail } });
+      await dbSet(SESSION_MODE_KEY, 'user');
+      set({ user: { id: userId, email: normalizedEmail }, guest: false });
     } catch (e: any) {
       set({ error: e?.message ?? 'Sign up failed' });
       throw e;
@@ -186,7 +202,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (computedHash !== userAuth.password_hash) throw new Error('Incorrect password.');
 
       await setSessionUserId(userAuth.id);
-      set({ user: { id: userAuth.id, email: userAuth.email } });
+      await dbSet(SESSION_MODE_KEY, 'user');
+      set({ user: { id: userAuth.id, email: userAuth.email }, guest: false });
     } catch (e: any) {
       set({ error: e?.message ?? 'Sign in failed' });
       throw e;
@@ -198,7 +215,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       set({ error: null });
       await setSessionUserId(null);
-      set({ user: null });
+      await dbRemove(SESSION_MODE_KEY);
+      set({ user: null, guest: false });
     } catch (e: any) {
       set({ error: e?.message ?? 'Sign out failed' });
       throw e;

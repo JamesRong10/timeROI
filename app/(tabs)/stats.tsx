@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useTimeStore } from '../../store/useTimeStore';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useAuthStore } from '../../store/useAuthStore';
+import { TimeEntry, useTimeStore } from '../../store/useTimeStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
 
-function getWeekEntries(entries: ReturnType<typeof useTimeStore>['entries']) {
+function getWeekEntries(entries: TimeEntry[]) {
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   return entries.filter((entry) => {
@@ -15,6 +16,8 @@ function getWeekEntries(entries: ReturnType<typeof useTimeStore>['entries']) {
 
 export default function StatsScreen() {
   const entries = useTimeStore((state) => state.entries);
+  const signOut = useAuthStore((s) => s.signOut);
+  const guest = useAuthStore((s) => s.guest);
   const weeklyEntries = getWeekEntries(entries);
 
   const total = getTotalTime(weeklyEntries);
@@ -23,9 +26,22 @@ export default function StatsScreen() {
   const wastedValue = getDollarValue(wasted);
   const productivePercent = total > 0 ? (productive / total) * 100 : 0;
 
+  const onLogout = async () => {
+    try {
+      await signOut();
+    } catch (e: any) {
+      Alert.alert('Logout failed', e?.message ?? 'Please try again.');
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Weekly Stats</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Weekly Stats</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
+          <Text style={styles.logoutText}>{guest ? 'Exit' : 'Log out'}</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Weekly Total Time</Text>
         <Text style={styles.largeText}>{total} min</Text>
@@ -52,12 +68,31 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
   },
+  header: {
+    position: 'relative',
+    marginBottom: 20,
+  },
   title: {
     color: colors.text,
     fontSize: 26,
     fontWeight: '800',
-    marginBottom: 20,
     textAlign: 'center',
+  },
+  logoutButton: {
+    position: 'absolute',
+    right: 0,
+    top: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: '#1a2232',
+  },
+  logoutText: {
+    color: colors.secondaryText,
+    fontSize: 13,
+    fontWeight: '800',
   },
   card: {
     backgroundColor: colors.card,

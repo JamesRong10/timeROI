@@ -23,6 +23,7 @@ interface TimeState {
   addEntry: (entry: TimeEntry) => void;
   getTodayEntries: () => TimeEntry[];
   hydrateForUser: (userId: string) => Promise<void>;
+  hydrateGuest: () => void;
   clear: () => void;
 }
 
@@ -90,6 +91,9 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     const entries = await getEntriesForUser(userId);
     set({ entries });
   },
+
+  // Guest mode uses in-memory sample data (no persistence).
+  hydrateGuest: () => set({ entries: sampleData }),
 
   // Clears in-memory entries (used on logout).
   clear: () => set({ entries: [] }),

@@ -11,9 +11,10 @@ import { useAuthStore } from '../../store/useAuthStore';
 export default function AuthLayout() {
   const ready = useAuthStore((s) => s.ready);
   const user = useAuthStore((s) => s.user);
+  const guest = useAuthStore((s) => s.guest);
 
   if (!ready) return null;
-  if (user) return <Redirect href="/(tabs)" />;
+  if (user || guest) return <Redirect href="/(tabs)" />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
