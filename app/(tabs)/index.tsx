@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useTimeStore } from '../../store/useTimeStore';
+import { useStreakStore } from '../../store/useStreakStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
 
 export default function DashboardScreen() {
   // Select the function, not the result
   const getTodayEntries = useTimeStore((state) => state.getTodayEntries);
+  const streak = useStreakStore((s) => s.current);
+  const lastActiveDate = useStreakStore((s) => s.lastActiveDate);
 
   // Call the function to get today's entries
   const todayEntries = React.useMemo(() => getTodayEntries(), [getTodayEntries]);
@@ -16,12 +19,24 @@ export default function DashboardScreen() {
   const wasted = getWastedTime(todayEntries);
   const wastedValue = getDollarValue(wasted);
 
+  const today = React.useMemo(() => new Date().toISOString().split('T')[0], []);
+  const streakSatisfiedToday = lastActiveDate === today;
+  const flame = streakSatisfiedToday ? '🔥' : '🔥︎'; // VS15 requests text (often B/W) presentation where supported
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <Text style={styles.title}>TimeROI Dashboard</Text>
 
       <View style={[styles.card, styles.wastedCard]}>
         <Text style={styles.wastedText}>You wasted ${wastedValue.toFixed(2)} today</Text>
+      </View>
+
+      <View style={[styles.card, styles.streakCard]}>
+        <Text style={styles.cardTitle}>Current Streak</Text>
+        <Text style={styles.streakValue}>
+          {streak} day{streak === 1 ? '' : 's'}
+        </Text>
+        <Text style={[styles.streakEmoji, !streakSatisfiedToday && styles.streakEmojiMuted]}>{flame}</Text>
       </View>
 
       <View style={styles.card}>
@@ -84,6 +99,24 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 28,
     fontWeight: '700',
+  },
+  streakCard: {
+    alignSelf: 'flex-start',
+    width: '62%',
+    paddingVertical: 12,
+  },
+  streakEmoji: {
+    fontSize: 18,
+    marginTop: 4,
+  },
+  streakEmojiMuted: {
+    opacity: 0.35,
+  },
+  streakValue: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 4,
   },
   row: {
     flexDirection: 'row',

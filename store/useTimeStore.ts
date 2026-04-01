@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { CategoryType } from '../constants/categories';
 import { dbGetJson, dbSetJson, initDatabase } from '../utils/db';
 import { useAuthStore } from './useAuthStore';
+import { useStreakStore } from './useStreakStore';
 
 /**
  * Time entry store.
@@ -67,7 +68,15 @@ export const useTimeStore = create<TimeState>((set, get) => ({
       entries: [entry, ...state.entries],
     }));
 
-    const authUserId = useAuthStore.getState().user?.id;
+    const authState = useAuthStore.getState();
+    const identity = authState.user?.id ?? (authState.guest ? 'guest' : null);
+
+    if (identity) {
+      // A day only counts toward a streak if the user logs at least one entry that day.
+      void useStreakStore.getState().recordActivity(identity, entry.date);
+    }
+
+    const authUserId = authState.user?.id;
     if (authUserId) {
       // Persist in the background so UI remains responsive.
       void (async () => {
