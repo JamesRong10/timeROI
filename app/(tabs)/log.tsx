@@ -5,11 +5,21 @@ import { CategorySelector } from '../../components/CategorySelector';
 import { colors } from '../../constants/colors';
 import { CategoryType } from '../../constants/categories';
 
+/**
+ * Log tab.
+ *
+ * Lets the user add a time entry:
+ * - duration (minutes)
+ * - category
+ *
+ * Logging an entry also counts as daily "activity" for the streak system.
+ */
 export default function LogScreen() {
   const addEntry = useTimeStore((state) => state.addEntry);
   const [durationText, setDurationText] = useState('');
   const [category, setCategory] = useState<CategoryType>('money');
 
+  // Validates input and pushes a new entry into the store.
   const handleAdd = () => {
     const minutes = Number(durationText);
     if (!minutes || minutes <= 0) {

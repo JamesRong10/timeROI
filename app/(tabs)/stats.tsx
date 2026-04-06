@@ -5,6 +5,16 @@ import { TimeEntry, useTimeStore } from '../../store/useTimeStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
 
+/**
+ * Weekly stats tab.
+ *
+ * Includes:
+ * - "Insights" ring charts (outer-ring only, no filled pie):
+ *   1) Productive vs non-productive (weekly)
+ *   2) "Money lost" percent (weekly wasted / weekly total)
+ *   3) Improvement from yesterday (productive% today - productive% yesterday)
+ * - Weekly totals and wasted dollar value
+ */
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
@@ -44,6 +54,7 @@ function Ring({ label, valueText, progress, color }: RingProps) {
   const thickness = 10;
   const half = size / 2;
 
+  // Progress is represented by a rotating half-circle trick (no extra libraries).
   const p = clamp01(progress);
   const rightRotate = p <= 0.5 ? p * 360 - 180 : 0;
   const leftRotate = p > 0.5 ? (p - 0.5) * 360 - 180 : -180;
