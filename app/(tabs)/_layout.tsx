@@ -62,5 +62,12 @@ export default function TabsLayout() {
   if (!ready) return null;
   if (!user && !guest) return <Redirect href="/(auth)" />;
 
-  return <Tabs />;
+  return (
+    <Tabs screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="index" options={{ title: 'Dashboard' }} />
+      <Tabs.Screen name="log" options={{ title: 'Log' }} />
+      <Tabs.Screen name="stats" options={{ title: 'Stats' }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+    </Tabs>
+  );
 }

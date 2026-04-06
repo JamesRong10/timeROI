@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, AppState } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { colors } from '../constants/colors';
 
@@ -23,6 +23,16 @@ export default function AppLayout() {
   // Load session when the app mounts.
   React.useEffect(() => {
     void loadSession();
+  }, [loadSession]);
+
+  // Re-check session when returning to the foreground so auto-logout is enforced.
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void loadSession();
+      }
+    });
+    return () => sub.remove();
   }, [loadSession]);
 
   // Prevent route flashes until we know whether the user is logged in.
