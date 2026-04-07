@@ -30,6 +30,7 @@ export default function SettingsScreen() {
   const prefsReady = usePreferencesStore((s) => s.ready);
   const policyPref = usePreferencesStore((s) => s.values[AUTO_LOGOUT_PREF_KEY]);
   const setPreference = usePreferencesStore((s) => s.setPreference);
+  const recordFeatureUse = usePreferencesStore((s) => s.recordFeatureUse);
 
   const [email, setEmail] = React.useState(user?.email ?? '');
   const [emailPassword, setEmailPassword] = React.useState('');
@@ -45,6 +46,10 @@ export default function SettingsScreen() {
   React.useEffect(() => {
     setEmail(user?.email ?? '');
   }, [user?.email]);
+
+  React.useEffect(() => {
+    void recordFeatureUse('settings');
+  }, [recordFeatureUse]);
 
   const onLogout = async () => {
     try {

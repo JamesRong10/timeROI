@@ -17,6 +17,16 @@ export interface TimeEntry {
   duration: number;
   category: CategoryType;
   date: string;
+  // Badge-ready fields (optional for backward compatibility).
+  created_at?: string; // ISO timestamp for when the entry was recorded
+  started_at?: string; // ISO timestamp for focus sessions (future)
+  ended_at?: string; // ISO timestamp for focus sessions (future)
+  interruptions?: number; // number of interruptions during the session (future)
+  time_roi_score?: number; // higher = better ROI (future)
+  goal_id?: string; // future: link entry to a daily goal
+  project_id?: string; // future: link entry to a long-term project
+  source?: 'manual' | 'timer'; // future: distinguish manual vs timer-created entries
+  notes?: string; // future: optional notes / task label
 }
 
 interface TimeState {
@@ -29,11 +39,27 @@ interface TimeState {
 }
 
 const sampleData: TimeEntry[] = [
-  { id: 's1', duration: 60, category: 'learning', date: new Date().toISOString().split('T')[0] },
-  { id: 's2', duration: 40, category: 'health', date: new Date().toISOString().split('T')[0] },
-  { id: 's3', duration: 20, category: 'wasted', date: new Date().toISOString().split('T')[0] },
-  { id: 's4', duration: 120, category: 'rest', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] },
+  { id: 's1', duration: 60, category: 'learning', date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString() },
+  { id: 's2', duration: 40, category: 'health', date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString() },
+  { id: 's3', duration: 20, category: 'wasted', date: new Date().toISOString().split('T')[0], created_at: new Date().toISOString() },
+  {
+    id: 's4',
+    duration: 120,
+    category: 'rest',
+    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    created_at: new Date().toISOString(),
+  },
 ];
+
+function normalizeEntry(entry: TimeEntry): TimeEntry {
+  // Ensure new optional fields get reasonable defaults for badge computations.
+  if (!entry.created_at) {
+    const fallbackMs = Date.parse(`${entry.date}T12:00:00`);
+    const createdAt = Number.isFinite(fallbackMs) ? new Date(fallbackMs).toISOString() : new Date().toISOString();
+    return { ...entry, created_at: createdAt };
+  }
+  return entry;
+}
 
 // Storage key namespace for per-user entry lists.
 function entriesKey(userId: string) {
@@ -64,8 +90,9 @@ export const useTimeStore = create<TimeState>((set, get) => ({
 
   // Adds an entry to in-memory state and persists it for the current user (if logged in).
   addEntry: (entry) => {
+    const normalized = normalizeEntry(entry);
     set((state) => ({
-      entries: [entry, ...state.entries],
+      entries: [normalized, ...state.entries],
     }));
 
     const authState = useAuthStore.getState();
@@ -73,7 +100,7 @@ export const useTimeStore = create<TimeState>((set, get) => ({
 
     if (identity) {
       // A day only counts toward a streak if the user logs at least one entry that day.
-      void useStreakStore.getState().recordActivity(identity, entry.date);
+      void useStreakStore.getState().recordActivity(identity, normalized.date);
     }
 
     const authUserId = authState.user?.id;
@@ -81,7 +108,7 @@ export const useTimeStore = create<TimeState>((set, get) => ({
       // Persist in the background so UI remains responsive.
       void (async () => {
         const existing = await getEntriesForUser(authUserId);
-        await saveEntriesForUser(authUserId, [entry, ...existing]);
+        await saveEntriesForUser(authUserId, [normalized, ...existing]);
       })();
     }
   },
@@ -98,7 +125,7 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     await initDatabase();
     await seedIfEmpty(userId);
     const entries = await getEntriesForUser(userId);
-    set({ entries });
+    set({ entries: entries.map(normalizeEntry) });
   },
 
   // Guest mode uses in-memory sample data (no persistence).

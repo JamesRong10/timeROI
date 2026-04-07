@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useTimeStore } from '../../store/useTimeStore';
 import { useStreakStore } from '../../store/useStreakStore';
+import { usePreferencesStore } from '../../store/usePreferencesStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
 
@@ -30,6 +31,11 @@ export default function DashboardScreen() {
   const getTodayEntries = useTimeStore((state) => state.getTodayEntries);
   const streak = useStreakStore((s) => s.current);
   const lastActiveDate = useStreakStore((s) => s.lastActiveDate);
+  const recordFeatureUse = usePreferencesStore((s) => s.recordFeatureUse);
+
+  React.useEffect(() => {
+    void recordFeatureUse('dashboard');
+  }, [recordFeatureUse]);
 
   // Call the function to get today's entries
   const todayEntries = React.useMemo(() => getTodayEntries(), [getTodayEntries]);

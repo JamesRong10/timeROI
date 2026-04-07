@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { useTimeStore } from '../../store/useTimeStore';
+import { usePreferencesStore } from '../../store/usePreferencesStore';
 import { CategorySelector } from '../../components/CategorySelector';
 import { colors } from '../../constants/colors';
 import { CategoryType } from '../../constants/categories';
@@ -16,8 +17,13 @@ import { CategoryType } from '../../constants/categories';
  */
 export default function LogScreen() {
   const addEntry = useTimeStore((state) => state.addEntry);
+  const recordFeatureUse = usePreferencesStore((s) => s.recordFeatureUse);
   const [durationText, setDurationText] = useState('');
   const [category, setCategory] = useState<CategoryType>('money');
+
+  React.useEffect(() => {
+    void recordFeatureUse('log');
+  }, [recordFeatureUse]);
 
   // Validates input and pushes a new entry into the store.
   const handleAdd = () => {
@@ -32,6 +38,8 @@ export default function LogScreen() {
       duration: minutes,
       category,
       date: new Date().toISOString().split('T')[0],
+      created_at: new Date().toISOString(),
+      source: 'manual' as const,
     };
 
     addEntry(entry);
