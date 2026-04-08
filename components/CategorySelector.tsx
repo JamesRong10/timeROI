@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, PressableStateCallbackType } from 'react-native';
 import { categories, CategoryType } from '../constants/categories';
 import { colors } from '../constants/colors';
 
@@ -8,19 +8,26 @@ interface CategorySelectorProps {
   onChange: (value: CategoryType) => void;
 }
 
+type PressState = PressableStateCallbackType & { hovered?: boolean };
+
 export function CategorySelector({ value, onChange }: CategorySelectorProps) {
   return (
     <View style={styles.container}>
       {categories.map((category) => {
         const selected = category.key === value;
         return (
-          <TouchableOpacity
+          <Pressable
             key={category.key}
-            style={[styles.button, selected && styles.buttonSelected]}
+            style={({ pressed, hovered }: PressState) => [
+              styles.button,
+              selected && {
+                backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary,
+              },
+            ]}
             onPress={() => onChange(category.key)}
           >
             <Text style={[styles.label, selected && styles.labelSelected]}>{category.label}</Text>
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
@@ -42,9 +49,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     minWidth: '30%',
     alignItems: 'center',
-  },
-  buttonSelected: {
-    backgroundColor: colors.primary,
   },
   label: {
     color: colors.text,

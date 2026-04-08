@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, Pressable, PressableStateCallbackType } from 'react-native';
 import { Link, router } from 'expo-router';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -82,9 +82,17 @@ export default function SignupScreen() {
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
-        <TouchableOpacity style={[styles.button, submitting && styles.buttonDisabled]} onPress={onSubmit} disabled={submitting}>
+        <Pressable
+          style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => [
+            styles.button,
+            submitting && styles.buttonDisabled,
+            { backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary },
+          ]}
+          onPress={onSubmit}
+          disabled={submitting}
+        >
           <Text style={styles.buttonText}>{submitting ? 'Creating…' : 'Create account'}</Text>
-        </TouchableOpacity>
+        </Pressable>
 
         <Text style={styles.footerText}>
           Already have an account?{' '}
@@ -141,7 +149,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

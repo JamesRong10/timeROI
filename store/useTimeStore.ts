@@ -3,6 +3,7 @@ import { CategoryType } from '../constants/categories';
 import { dbGetJson, dbSetJson, initDatabase } from '../utils/db';
 import { useAuthStore } from './useAuthStore';
 import { useStreakStore } from './useStreakStore';
+import { isProductive } from '../utils/calculations';
 
 /**
  * Time entry store.
@@ -99,8 +100,10 @@ export const useTimeStore = create<TimeState>((set, get) => ({
     const identity = authState.user?.id ?? (authState.guest ? 'guest' : null);
 
     if (identity) {
-      // A day only counts toward a streak if the user logs at least one entry that day.
-      void useStreakStore.getState().recordActivity(identity, normalized.date);
+      // A day only counts toward a streak if the user logs at least one PRODUCTIVE entry that day.
+      if (isProductive(normalized.category)) {
+        void useStreakStore.getState().recordActivity(identity, normalized.date);
+      }
     }
 
     const authUserId = authState.user?.id;

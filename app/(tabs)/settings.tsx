@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TextInput, TouchableOpacity, Alert, Pressable, PressableStateCallbackType } from 'react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { usePreferencesStore } from '../../store/usePreferencesStore';
 import { colors } from '../../constants/colors';
@@ -141,13 +141,17 @@ export default function SettingsScreen() {
               placeholderTextColor={colors.secondaryText}
             />
 
-            <TouchableOpacity
-              style={[styles.button, emailSubmitting && styles.buttonDisabled]}
+            <Pressable
+              style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => [
+                styles.button,
+                emailSubmitting && styles.buttonDisabled,
+                { backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary },
+              ]}
               onPress={onUpdateEmail}
               disabled={emailSubmitting}
             >
               <Text style={styles.buttonText}>{emailSubmitting ? 'Updating…' : 'Update email'}</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View style={styles.card}>
@@ -183,13 +187,17 @@ export default function SettingsScreen() {
               placeholderTextColor={colors.secondaryText}
             />
 
-            <TouchableOpacity
-              style={[styles.button, passwordSubmitting && styles.buttonDisabled]}
+            <Pressable
+              style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => [
+                styles.button,
+                passwordSubmitting && styles.buttonDisabled,
+                { backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary },
+              ]}
               onPress={onChangePassword}
               disabled={passwordSubmitting}
             >
               <Text style={styles.buttonText}>{passwordSubmitting ? 'Updating…' : 'Update password'}</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View style={styles.card}>
@@ -295,7 +303,6 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 16,
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 10,
     alignItems: 'center',

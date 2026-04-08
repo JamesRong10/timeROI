@@ -5,7 +5,7 @@ import { dbGetJson, dbSetJson, initDatabase } from '../utils/db';
  * Streak store (daily).
  *
  * How streaks work:
- * - A streak is extended when the user logs at least ONE time entry for a calendar date.
+ * - A streak is extended when the user logs at least ONE PRODUCTIVE time entry for a calendar date.
  * - If the user misses an entire calendar date, the streak resets to 0.
  * - "Satisfied today" can be derived by checking `lastActiveDate === today`.
  *

@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Pressable, PressableStateCallbackType } from 'react-native';
 import { useTimeStore } from '../../store/useTimeStore';
 import { useStreakStore } from '../../store/useStreakStore';
 import { usePreferencesStore } from '../../store/usePreferencesStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
+import { LogEntryModal } from '../../components/LogEntryModal';
 
 /**
  * Dashboard tab.
@@ -56,6 +57,7 @@ export default function DashboardScreen() {
   const [remainingSeconds, setRemainingSeconds] = React.useState(selectedMinutes * 60);
   const [timerState, setTimerState] = React.useState<'idle' | 'running' | 'paused' | 'done'>('idle');
   const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const [logModalVisible, setLogModalVisible] = React.useState(false);
 
   // Apply a preset selection (also resets the timer).
   const applySelection = React.useCallback((minutes: number) => {
@@ -143,12 +145,26 @@ export default function DashboardScreen() {
         <Text style={styles.wastedText}>You wasted ${wastedValue.toFixed(2)} today</Text>
       </View>
 
-      <View style={[styles.card, styles.streakCard]}>
-        <Text style={styles.cardTitle}>Current Streak</Text>
-        <Text style={styles.streakValue}>
-          {streak} day{streak === 1 ? '' : 's'}
-        </Text>
-        <Text style={[styles.streakEmoji, !streakSatisfiedToday && styles.streakEmojiMuted]}>{flame}</Text>
+      <View style={styles.streakRow}>
+        <View style={[styles.card, styles.cardInRow, styles.streakCard]}>
+          <Text style={styles.cardTitle}>Current Streak</Text>
+          <Text style={styles.streakHint}>Counts days with 1+ productive entry</Text>
+          <Text style={styles.streakValue}>
+            {streak} day{streak === 1 ? '' : 's'}
+          </Text>
+          <Text style={[styles.streakEmoji, !streakSatisfiedToday && styles.streakEmojiMuted]}>{flame}</Text>
+        </View>
+        <Pressable
+          style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => {
+            const bg = pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary;
+            return [styles.card, styles.cardInRow, styles.logCtaCard, { backgroundColor: bg, borderColor: bg }];
+          }}
+          onPress={() => setLogModalVisible(true)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.logCtaTitle}>Log</Text>
+          <Text style={styles.logCtaSubtitle}>Add entry</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
@@ -158,13 +174,17 @@ export default function DashboardScreen() {
           {presetMinutes.map((m) => {
             const active = selectedMinutes === m && customMinutesText.length === 0;
             return (
-              <TouchableOpacity
+              <Pressable
                 key={m}
-                style={[styles.pill, active ? styles.pillActive : styles.pillInactive]}
+                style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => {
+                  if (!active) return [styles.pill, styles.pillInactive];
+                  const bg = pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary;
+                  return [styles.pill, styles.pillActive, { backgroundColor: bg, borderColor: bg }];
+                }}
                 onPress={() => applySelection(m)}
               >
                 <Text style={[styles.pillText, active ? styles.pillTextActive : styles.pillTextInactive]}>{m}m</Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -200,9 +220,16 @@ export default function DashboardScreen() {
               <Text style={styles.timerButtonText}>Pause</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.timerButton, styles.timerButtonPrimary, styles.timerButtonLeft]} onPress={onStart}>
+            <Pressable
+              style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => [
+                styles.timerButton,
+                styles.timerButtonLeft,
+                { backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary },
+              ]}
+              onPress={onStart}
+            >
               <Text style={styles.timerButtonText}>{timerState === 'paused' ? 'Resume' : 'Start'}</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
           <TouchableOpacity style={[styles.timerButton, styles.timerButtonSecondary, styles.timerButtonRight]} onPress={onReset}>
             <Text style={styles.timerButtonText}>Reset</Text>
@@ -225,6 +252,8 @@ export default function DashboardScreen() {
           <Text style={[styles.value, { color: colors.danger }]}>{wasted} min</Text>
         </View>
       </View>
+
+      <LogEntryModal visible={logModalVisible} onClose={() => setLogModalVisible(false)} />
     </ScrollView>
   );
 }
@@ -252,6 +281,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  cardInRow: {
+    marginBottom: 0,
+  },
   wastedCard: {
     borderColor: colors.danger,
   },
@@ -272,9 +304,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   streakCard: {
-    alignSelf: 'flex-start',
-    width: '62%',
+    flex: 1,
     paddingVertical: 12,
+  },
+  streakHint: {
+    color: colors.secondaryText,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
   },
   streakEmoji: {
     fontSize: 18,
@@ -282,6 +319,30 @@ const styles = StyleSheet.create({
   },
   streakEmojiMuted: {
     opacity: 0.35,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginBottom: 12,
+    gap: 12,
+  },
+  logCtaCard: {
+    width: '34%',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    textAlign: 'center',
+    alignItems: 'center',
+  },
+  logCtaTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  logCtaSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 4,
   },
   streakValue: {
     color: colors.text,
@@ -303,7 +364,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pillActive: {
-    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   pillInactive: {
@@ -383,9 +443,6 @@ const styles = StyleSheet.create({
   },
   timerButtonRight: {
     marginLeft: 8,
-  },
-  timerButtonPrimary: {
-    backgroundColor: colors.primary,
   },
   timerButtonSecondary: {
     backgroundColor: '#1a2232',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable, PressableStateCallbackType } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -29,9 +29,16 @@ export default function AuthHomeScreen() {
         </Text>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={[styles.primaryButton, styles.actionSpacing]} onPress={() => router.push('/(auth)/login')}>
+          <Pressable
+            style={({ pressed, hovered }: PressableStateCallbackType & { hovered?: boolean }) => [
+              styles.primaryButton,
+              styles.actionSpacing,
+              { backgroundColor: pressed ? colors.primaryPressed : hovered ? colors.primaryHover : colors.primary },
+            ]}
+            onPress={() => router.push('/(auth)/login')}
+          >
             <Text style={styles.primaryButtonText}>Log in</Text>
-          </TouchableOpacity>
+          </Pressable>
 
           <TouchableOpacity style={[styles.secondaryButton, styles.actionSpacing]} onPress={() => router.push('/(auth)/signup')}>
             <Text style={styles.secondaryButtonText}>Create account</Text>
@@ -85,7 +92,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
