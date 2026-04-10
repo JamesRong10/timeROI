@@ -3,9 +3,11 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Pressa
 import { useTimeStore } from '../../store/useTimeStore';
 import { useStreakStore } from '../../store/useStreakStore';
 import { usePreferencesStore } from '../../store/usePreferencesStore';
+import { useDailyQuestsStore } from '../../store/useDailyQuestsStore';
 import { getTotalTime, getProductiveTime, getWastedTime, getDollarValue } from '../../utils/calculations';
 import { colors } from '../../constants/colors';
 import { LogEntryModal } from '../../components/LogEntryModal';
+import { DailyQuestsCard } from '../../components/DailyQuestsCard';
 
 /**
  * Dashboard tab.
@@ -30,9 +32,14 @@ function formatMMSS(totalSeconds: number): string {
 export default function DashboardScreen() {
   // Select the function, not the result
   const getTodayEntries = useTimeStore((state) => state.getTodayEntries);
+  const allEntries = useTimeStore((s) => s.entries);
   const streak = useStreakStore((s) => s.current);
   const lastActiveDate = useStreakStore((s) => s.lastActiveDate);
   const recordFeatureUse = usePreferencesStore((s) => s.recordFeatureUse);
+  const timerStartedToday = useDailyQuestsStore((s) => s.timerStarted);
+  const maxFocusMinutesCompletedToday = useDailyQuestsStore((s) => s.maxFocusMinutesCompleted);
+  const recordTimerStart = useDailyQuestsStore((s) => s.recordTimerStart);
+  const recordTimerCompleted = useDailyQuestsStore((s) => s.recordTimerCompleted);
 
   React.useEffect(() => {
     void recordFeatureUse('dashboard');
@@ -111,9 +118,10 @@ export default function DashboardScreen() {
   React.useEffect(() => {
     if (timerState === 'running' && remainingSeconds <= 0) {
       stopInterval();
+      void recordTimerCompleted(durationSeconds / 60);
       setTimerState('done');
     }
-  }, [remainingSeconds, timerState, stopInterval]);
+  }, [remainingSeconds, timerState, stopInterval, recordTimerCompleted, durationSeconds]);
 
   React.useEffect(() => {
     return () => stopInterval();
@@ -121,11 +129,12 @@ export default function DashboardScreen() {
 
   // Starts (or resumes) the countdown.
   const onStart = React.useCallback(() => {
+    void recordTimerStart();
     if (remainingSeconds <= 0) {
       setRemainingSeconds(durationSeconds);
     }
     setTimerState('running');
-  }, [remainingSeconds, durationSeconds]);
+  }, [recordTimerStart, remainingSeconds, durationSeconds]);
 
   // Pauses the countdown.
   const onPause = React.useCallback(() => setTimerState('paused'), []);
@@ -166,6 +175,15 @@ export default function DashboardScreen() {
           <Text style={styles.logCtaSubtitle}>Add entry</Text>
         </Pressable>
       </View>
+
+      <DailyQuestsCard
+        todayEntries={todayEntries}
+        allEntries={allEntries}
+        streakSatisfiedToday={streakSatisfiedToday}
+        productiveMinutesToday={productive}
+        timerStartedToday={timerStartedToday}
+        maxFocusMinutesCompletedToday={maxFocusMinutesCompletedToday}
+      />
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Focus Timer</Text>

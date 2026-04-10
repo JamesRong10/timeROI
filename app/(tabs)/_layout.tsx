@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useTimeStore } from '../../store/useTimeStore';
 import { usePreferencesStore } from '../../store/usePreferencesStore';
 import { useStreakStore } from '../../store/useStreakStore';
+import { useDailyQuestsStore } from '../../store/useDailyQuestsStore';
 
 /**
  * Authenticated Tabs layout.
@@ -23,6 +24,8 @@ export default function TabsLayout() {
   const clearPreferences = usePreferencesStore((s) => s.clear);
   const hydrateStreakForIdentity = useStreakStore((s) => s.hydrateForIdentity);
   const clearStreak = useStreakStore((s) => s.clear);
+  const hydrateDailyQuestsForIdentity = useDailyQuestsStore((s) => s.hydrateForIdentity);
+  const clearDailyQuests = useDailyQuestsStore((s) => s.clear);
 
   React.useEffect(() => {
     if (!ready) return;
@@ -31,6 +34,7 @@ export default function TabsLayout() {
       clear();
       clearPreferences();
       clearStreak();
+      clearDailyQuests();
       return;
     }
     if (guest) {
@@ -38,6 +42,7 @@ export default function TabsLayout() {
       hydrateGuest();
       clearPreferences();
       void hydrateStreakForIdentity('guest');
+      void hydrateDailyQuestsForIdentity('guest');
       return;
     }
     if (user) {
@@ -45,6 +50,7 @@ export default function TabsLayout() {
       void hydrateForUser(user.id);
       void hydratePreferencesForUser(user.id);
       void hydrateStreakForIdentity(user.id);
+      void hydrateDailyQuestsForIdentity(user.id);
     }
   }, [
     ready,
@@ -54,9 +60,11 @@ export default function TabsLayout() {
     hydratePreferencesForUser,
     hydrateGuest,
     hydrateStreakForIdentity,
+    hydrateDailyQuestsForIdentity,
     clear,
     clearPreferences,
     clearStreak,
+    clearDailyQuests,
   ]);
 
   if (!ready) return null;
