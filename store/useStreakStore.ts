@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { dbGetJson, dbSetJson, initDatabase } from '../utils/db';
+import { supabase } from '../src/lib/supabase';
 
 /**
  * Streak store (daily).
@@ -63,6 +64,41 @@ async function saveStreak(identity: string, data: StreakData): Promise<void> {
   await dbSetJson(streakKey(identity), data);
 }
 
+const LAST_ACTIVE_PREF_KEY = 'streak:last_active_date';
+
+async function loadRemoteStreak(userId: string): Promise<StreakData> {
+  const [profileRes, lastActiveRes] = await Promise.all([
+    supabase.from('profiles').select('streak').eq('id', userId).maybeSingle(),
+    supabase
+      .from('user_preferences')
+      .select('pref_value')
+      .eq('user_id', userId)
+      .eq('pref_key', LAST_ACTIVE_PREF_KEY)
+      .maybeSingle(),
+  ]);
+
+  // If the profile row is missing (e.g., trigger not installed yet), create it.
+  if (!profileRes.error && !profileRes.data) {
+    await supabase.from('profiles').insert({ id: userId }).select('id').maybeSingle();
+  }
+
+  const current = profileRes.data?.streak ?? 0;
+  const lastActiveDate = lastActiveRes.data?.pref_value ?? null;
+  return { current, lastActiveDate };
+}
+
+async function saveRemoteStreak(userId: string, data: StreakData): Promise<void> {
+  await supabase.from('profiles').update({ streak: data.current }).eq('id', userId);
+  if (data.lastActiveDate) {
+    await supabase
+      .from('user_preferences')
+      .upsert(
+        { user_id: userId, pref_key: LAST_ACTIVE_PREF_KEY, pref_value: data.lastActiveDate, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,pref_key' },
+      );
+  }
+}
+
 export const useStreakStore = create<StreakState>((set, get) => ({
   identity: null,
   current: 0,
@@ -70,13 +106,14 @@ export const useStreakStore = create<StreakState>((set, get) => ({
 
   // Loads the current streak for a given identity (user or guest).
   hydrateForIdentity: async (identity) => {
-    const data = await loadStreak(identity);
+    const data = identity === 'guest' ? await loadStreak(identity) : await loadRemoteStreak(identity);
     const today = todayString();
 
     // If a full calendar day was missed, reset the streak to 0 until the next activity.
     if (shouldResetStreak(data.lastActiveDate, today) && data.current !== 0) {
       const reset: StreakData = { current: 0, lastActiveDate: data.lastActiveDate };
-      await saveStreak(identity, reset);
+      if (identity === 'guest') await saveStreak(identity, reset);
+      else await saveRemoteStreak(identity, reset);
       set({ identity, current: reset.current, lastActiveDate: reset.lastActiveDate });
       return;
     }
@@ -86,7 +123,7 @@ export const useStreakStore = create<StreakState>((set, get) => ({
 
   // Records activity for a given calendar date and updates the streak accordingly.
   recordActivity: async (identity, date) => {
-    const data = await loadStreak(identity);
+    const data = identity === 'guest' ? await loadStreak(identity) : await loadRemoteStreak(identity);
 
     if (data.lastActiveDate === date) {
       set({ identity, current: data.current, lastActiveDate: data.lastActiveDate });
@@ -98,7 +135,8 @@ export const useStreakStore = create<StreakState>((set, get) => ({
         ? { current: Math.max(1, data.current + 1), lastActiveDate: date }
         : { current: 1, lastActiveDate: date };
 
-    await saveStreak(identity, next);
+    if (identity === 'guest') await saveStreak(identity, next);
+    else await saveRemoteStreak(identity, next);
     set({ identity, current: next.current, lastActiveDate: next.lastActiveDate });
   },
 

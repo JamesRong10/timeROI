@@ -14,7 +14,7 @@ import { useDailyQuestsStore } from '../../store/useDailyQuestsStore';
  * - If logged in: hydrates per-user data (time entries + preferences).
  */
 export default function TabsLayout() {
-  const ready = useAuthStore((s) => s.ready);
+  const loading = useAuthStore((s) => s.loading);
   const user = useAuthStore((s) => s.user);
   const guest = useAuthStore((s) => s.guest);
   const hydrateForUser = useTimeStore((s) => s.hydrateForUser);
@@ -28,7 +28,7 @@ export default function TabsLayout() {
   const clearDailyQuests = useDailyQuestsStore((s) => s.clear);
 
   React.useEffect(() => {
-    if (!ready) return;
+    if (loading) return;
     if (!user && !guest) {
       // Ensure user-specific data doesn't leak between sessions.
       clear();
@@ -53,7 +53,7 @@ export default function TabsLayout() {
       void hydrateDailyQuestsForIdentity(user.id);
     }
   }, [
-    ready,
+    loading,
     user?.id,
     guest,
     hydrateForUser,
@@ -67,7 +67,7 @@ export default function TabsLayout() {
     clearDailyQuests,
   ]);
 
-  if (!ready) return null;
+  if (loading) return null;
   if (!user && !guest) return <Redirect href="/(auth)" />;
 
   return (

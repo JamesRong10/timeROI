@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a2232',
     paddingVertical: 12,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: 'center', 
     borderWidth: 1,
     borderColor: colors.border,
   },

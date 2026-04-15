@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { dbGetJson, dbSetJson, initDatabase } from '../utils/db';
 import { useAuthStore } from './useAuthStore';
+import { supabase } from '../src/lib/supabase';
 
 /**
  * Preferences store (simple key/value per user).
  *
- * What it does:
- * - Loads preferences for a user on login.
- * - Persists updates back to local storage.
+ * Source of truth:
+ * - Supabase table `public.user_preferences` (protected by RLS).
  *
- * Example future uses:
- * - Theme setting, dashboard layout, default category, hourly rate, etc.
+ * Local cache:
+ * - Stored under `prefs:${userId}` so we can render quickly and support features like auto-logout.
  */
 type PreferencesState = {
   ready: boolean;
@@ -51,25 +51,52 @@ function safeParseStringMap(raw: string | undefined): Record<string, string> {
   }
 }
 
+async function upsertPreference(userId: string, key: string, value: string) {
+  await supabase
+    .from('user_preferences')
+    .upsert(
+      { user_id: userId, pref_key: key, pref_value: value, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,pref_key' },
+    );
+}
+
 export const usePreferencesStore = create<PreferencesState>((set, get) => ({
   ready: false,
   values: {},
 
-  // Load preference map for the given user id.
   hydrateForUser: async (userId) => {
     await initDatabase();
-    const values = await dbGetJson<Record<string, string>>(`prefs:${userId}`, {});
+
+    // Load cached preferences first so UI is responsive.
+    const cached = await dbGetJson<Record<string, string>>(`prefs:${userId}`, {});
+    set({ values: cached, ready: true });
+
+    // Then refresh from Supabase.
+    const { data, error } = await supabase
+      .from('user_preferences')
+      .select('pref_key, pref_value')
+      .eq('user_id', userId);
+
+    if (error) return;
+
+    const values: Record<string, string> = {};
+    for (const row of data ?? []) {
+      values[row.pref_key] = row.pref_value;
+    }
+
+    await dbSetJson(`prefs:${userId}`, values);
     set({ values, ready: true });
   },
 
-  // Persist a preference update for the currently logged-in user.
   setPreference: async (key, value) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return;
     await initDatabase();
+
     set((state) => {
       const next = { ...state.values, [key]: value };
       void dbSetJson(`prefs:${userId}`, next);
+      void upsertPreference(userId, key, value);
       return { values: next };
     });
   },
@@ -80,45 +107,50 @@ export const usePreferencesStore = create<PreferencesState>((set, get) => ({
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return;
     await initDatabase();
+
     set((state) => {
       const currentRaw = state.values[key];
       const current = currentRaw ? Number.parseInt(currentRaw, 10) : 0;
       const nextValue = (Number.isFinite(current) ? current : 0) + delta;
       const next = { ...state.values, [key]: String(nextValue) };
       void dbSetJson(`prefs:${userId}`, next);
+      void upsertPreference(userId, key, String(nextValue));
       return { values: next };
     });
   },
 
-  // Records a visited feature to support future "Explorer" badge logic.
   recordFeatureUse: async (featureId) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return;
     await initDatabase();
+
     set((state) => {
       const current = new Set(safeParseStringArray(state.values[FEATURE_USAGE_KEY]));
       current.add(featureId);
-      const next = { ...state.values, [FEATURE_USAGE_KEY]: JSON.stringify(Array.from(current).sort()) };
+      const nextValue = JSON.stringify(Array.from(current).sort());
+      const next = { ...state.values, [FEATURE_USAGE_KEY]: nextValue };
       void dbSetJson(`prefs:${userId}`, next);
+      void upsertPreference(userId, FEATURE_USAGE_KEY, nextValue);
       return { values: next };
     });
   },
 
-  // Merges a JSON object preference `{[key: string]: string}` with the provided patch.
-  // Used for badge unlock timestamps, etc.
   mergeJsonObjectPreference: async (key, patch) => {
     const userId = useAuthStore.getState().user?.id;
     if (!userId) return;
     await initDatabase();
+
     set((state) => {
       const current = safeParseStringMap(state.values[key]);
       const nextObj = { ...current, ...patch };
-      const next = { ...state.values, [key]: JSON.stringify(nextObj) };
+      const nextValue = JSON.stringify(nextObj);
+      const next = { ...state.values, [key]: nextValue };
       void dbSetJson(`prefs:${userId}`, next);
+      void upsertPreference(userId, key, nextValue);
       return { values: next };
     });
   },
 
-  // Clears in-memory preferences (used on logout).
   clear: () => set({ values: {}, ready: false }),
 }));
+

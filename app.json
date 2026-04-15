@@ -2,7 +2,7 @@
   "expo": {
     "name": "timeROI",
     "slug": "timeROI",
-    "scheme": "timeROI",
+    "scheme": "timeroi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,8 +12,13 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "supabase": {
+      "supabaseUrl": "https://eskjnookrbfnyumhjxry.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVza2pub29rcmJmbnl1bWhqeHJ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxOTUwNDAsImV4cCI6MjA5MTc3MTA0MH0.g6NHo5lAXfomR4SeXdH5pmoItjPsantSUs0M7m6FX4I"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jamesr1.timeROI"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,6 +42,12 @@
       "eas": {
         "projectId": "7462bb3c-7b69-47e7-9064-fd23c3be9a00"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7462bb3c-7b69-47e7-9064-fd23c3be9a00"
     }
   }
 }

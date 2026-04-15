@@ -7,15 +7,14 @@
  *
  * Storage behavior:
  * - Web: uses `localStorage` (persists across reloads).
- * - Native: falls back to an in-memory Map (resets on app restart).
- *
- * If you want true device persistence on iOS/Android, swap this implementation to AsyncStorage
- * or expo-sqlite once your environment is stable.
+ * - Native: uses AsyncStorage when available; otherwise falls back to an in-memory Map.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 type StorageLike = {
-  getItem: (key: string) => string | null;
-  setItem: (key: string, value: string) => void;
-  removeItem: (key: string) => void;
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
 };
 
 // In-memory fallback used when `localStorage` is unavailable (common on native).
@@ -23,18 +22,31 @@ const memoryStore = new Map<string, string>();
 
 function getStorage(): StorageLike {
   // Prefer `localStorage` when it exists (web).
-  const ls = (globalThis as any)?.localStorage as StorageLike | undefined;
+  const ls = (globalThis as any)?.localStorage as Storage | undefined;
   if (ls && typeof ls.getItem === 'function' && typeof ls.setItem === 'function' && typeof ls.removeItem === 'function') {
-    return ls;
+    return {
+      getItem: async (key) => ls.getItem(key),
+      setItem: async (key, value) => {
+        ls.setItem(key, value);
+      },
+      removeItem: async (key) => {
+        ls.removeItem(key);
+      },
+    };
   }
 
-  // Fallback storage implementation (native / constrained environments).
+  // Native: AsyncStorage when available.
+  if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+    return AsyncStorage as unknown as StorageLike;
+  }
+
+  // Fallback storage implementation (constrained environments).
   return {
-    getItem: (key) => memoryStore.get(key) ?? null,
-    setItem: (key, value) => {
+    getItem: async (key) => memoryStore.get(key) ?? null,
+    setItem: async (key, value) => {
       memoryStore.set(key, value);
     },
-    removeItem: (key) => {
+    removeItem: async (key) => {
       memoryStore.delete(key);
     },
   };
@@ -51,11 +63,11 @@ export async function dbGet(key: string): Promise<string | null> {
 }
 
 export async function dbSet(key: string, value: string): Promise<void> {
-  getStorage().setItem(key, value);
+  await getStorage().setItem(key, value);
 }
 
 export async function dbRemove(key: string): Promise<void> {
-  getStorage().removeItem(key);
+  await getStorage().removeItem(key);
 }
 
 // JSON helpers for structured data (arrays/objects).

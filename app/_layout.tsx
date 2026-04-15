@@ -17,7 +17,7 @@ import { colors } from '../constants/colors';
  *   - `app/(tabs)/_layout.tsx` for authenticated tabs
  */
 export default function AppLayout() {
-  const ready = useAuthStore((s) => s.ready);
+  const loading = useAuthStore((s) => s.loading);
   const loadSession = useAuthStore((s) => s.loadSession);
 
   // Load session when the app mounts.
@@ -36,7 +36,7 @@ export default function AppLayout() {
   }, [loadSession]);
 
   // Prevent route flashes until we know whether the user is logged in.
-  if (!ready) {
+  if (loading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={colors.primary} />

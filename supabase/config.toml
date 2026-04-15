@@ -1,0 +1,6 @@
+# Minimal Supabase CLI config.
+# After `supabase login`, run `supabase link --project-ref <ref>`
+# then `supabase db push` to apply migrations in `supabase/migrations/`.
+
+project_id = "timeroi"
+
